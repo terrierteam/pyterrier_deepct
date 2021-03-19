@@ -15,8 +15,7 @@ indexer.index(dataset.get_corpus_iter())
 ```
 
 ## Demos
- - vaswani.ipy - [[Github](blob/main/pyterrier_deepct_vaswani.ipynb
-.ipynb)] [[Colab](https://colab.research.google.com/github/terrierteam/pyterrier_deepct/blob/main/pyterrier_deepct_vaswani.ipynb)] - demonstrates end-to-end indexing and retrieval on the Vaswani corpus (~11k documents)
+ - vaswani.ipy - [[Github](blob/main/pyterrier_deepct_vaswani.ipynb)] [[Colab](https://colab.research.google.com/github/terrierteam/pyterrier_deepct/blob/main/pyterrier_deepct_vaswani.ipynb)] - demonstrates end-to-end indexing and retrieval on the Vaswani corpus (~11k documents)
 
 ## References
 
