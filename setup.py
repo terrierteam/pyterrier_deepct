@@ -15,11 +15,11 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="pyterrier-colbert",
+    name="pyterrier-deepct",
     version="0.0.1",
     author="Craig Macdonald",
     author_email='craigm{at}.dcs.gla.ac.uk',
-    description="PyTerrier components for ColBERT",
+    description="PyTerrier components for DeepCT",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
