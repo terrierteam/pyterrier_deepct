@@ -2,6 +2,10 @@
 
 Advanced [PyTerrier](https://github.com/terrier-org/pyterrier) bindings for [DeepCT](https://github.com/AdeDZY/DeepCT).
 
+## Installation 
+```
+pip install --upgrade git+https://github.com/terrierteam/pyterrier_deepct.git
+```
 
 ## Usage
 
