@@ -42,7 +42,7 @@ class DeepCTTransformer(TransformerBase):
     
     #bert_config="/users/tr.craigm/projects/pyterrier/DeepCT/bert-base-uncased/bert_config.json"
     #checkpoint="/users/tr.craigm/projects/pyterrier/DeepCT/outputs/marco/model.ckpt-65816"
-    def __init__(self, bert_config, checkpoint):
+    def __init__(self, bert_config, checkpoint, max_seq_length=128):
         import os
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
         from deepct import modeling
@@ -76,15 +76,16 @@ class DeepCTTransformer(TransformerBase):
                 model_fn=model_fn,
                 config=run_config,
                 predict_batch_size=16)
-        
+
+        self.max_seq_length = max_seq_length
 
     def transform(self, docs):
         def gen():
             from deepct.run_deepct import InputExample
             for row in docs.itertuples():
                 yield InputExample(row.docno, row.text, {})
-        features = deepct.run_deepct.convert_examples_to_features(gen(), None, 128, self.tokenizer)
-        input_fn = deepct.run_deepct.input_fn_builder(features, 128, False, False)
+        features = deepct.run_deepct.convert_examples_to_features(gen(), None, self.max_seq_length, self.tokenizer)
+        input_fn = deepct.run_deepct.input_fn_builder(features, self.max_seq_length, False, False)
         result = self.estimator.predict(input_fn=input_fn)
         newdocs = []
         for (i, prediction) in enumerate(result):
