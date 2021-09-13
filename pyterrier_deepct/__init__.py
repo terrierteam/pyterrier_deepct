@@ -42,7 +42,7 @@ class DeepCTTransformer(TransformerBase):
     
     #bert_config="/users/tr.craigm/projects/pyterrier/DeepCT/bert-base-uncased/bert_config.json"
     #checkpoint="/users/tr.craigm/projects/pyterrier/DeepCT/outputs/marco/model.ckpt-65816"
-    def __init__(self, bert_config, checkpoint, max_seq_length=128):
+    def __init__(self, bert_config, checkpoint, vocab_file="bert-base-uncased/vocab.txt", max_seq_length=128):
         import os
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
         from deepct import modeling
@@ -59,7 +59,7 @@ class DeepCTTransformer(TransformerBase):
         )
         from deepct import tokenization
         self.tokenizer = tokenization.FullTokenizer(
-            vocab_file="bert-base-uncased/vocab.txt", do_lower_case=True)
+            vocab_file=vocab_file, do_lower_case=True)
         
         import tensorflow as tf
         is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
