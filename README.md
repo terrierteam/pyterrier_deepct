@@ -1,4 +1,4 @@
-# pyterrier-deeptct
+# pyterrier-deepct
 
 Advanced [PyTerrier](https://github.com/terrier-org/pyterrier) bindings for [DeepCT](https://github.com/AdeDZY/DeepCT).
 
