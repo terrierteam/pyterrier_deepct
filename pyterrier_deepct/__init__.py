@@ -1,6 +1,6 @@
 
 import pandas as pd
-from pyterrier.transformer import TransformerBase
+from pyterrier import Transformer
 import deepct 
 def _subword_weight_to_word_weight(tokens, logits, smoothing="none", m=100, keep_all_terms=False):
     import numpy as np
@@ -38,11 +38,11 @@ def dict_tf2text(tfdict):
             rtr += t + " " 
     return rtr
 
-class DeepCTTransformer(TransformerBase):
+class DeepCTTransformer(Transformer):
     
     #bert_config="/users/tr.craigm/projects/pyterrier/DeepCT/bert-base-uncased/bert_config.json"
     #checkpoint="/users/tr.craigm/projects/pyterrier/DeepCT/outputs/marco/model.ckpt-65816"
-    def __init__(self, bert_config, checkpoint, vocab_file="bert-base-uncased/vocab.txt", max_seq_length=128):
+    def __init__(self, bert_config, checkpoint, vocab_file="bert-base-uncased/vocab.txt", max_seq_length=128, pretokenised=True):
         import os
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
         from deepct import modeling
@@ -58,6 +58,11 @@ class DeepCTTransformer(TransformerBase):
             use_all_layers=False,
         )
         from deepct import tokenization
+        self.pretokenised = pretokenised
+        if self.pretokenised:
+            import pyterrier as pt
+            from packaging.version import Version
+            assert Version(pt.__version__) > Version("0.9"), "Pyterrier 0.9 required for pretokenised"
         self.tokenizer = tokenization.FullTokenizer(
             vocab_file=vocab_file, do_lower_case=True)
         
@@ -93,11 +98,14 @@ class DeepCTTransformer(TransformerBase):
             logits = prediction["logits"]
             tokens = self.tokenizer.convert_ids_to_tokens(prediction["token_ids"])
             term2tf = _subword_weight_to_word_weight(tokens, logits)
-            newdocs.append(dict_tf2text(term2tf))
+            newdocs.append(term2tf if self.pretokenised else dict_tf2text(term2tf))
             if i >= len(docs):
                 break
                 
         rtr = pd.DataFrame()
         rtr["docno"] = docs["docno"]
-        rtr["text"] = newdocs
+        if self.pretokenised:
+            rtr["toks"] = newdocs
+        else:
+            rtr["text"] = newdocs
         return rtr
