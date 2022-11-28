@@ -9,6 +9,23 @@ pip install --upgrade git+https://github.com/terrierteam/pyterrier_deepct.git
 
 ## Usage
 
+```python
+from pyterrier_deepct import DeepCT, Toks2Text
+deepct = DeepCT() # loads macavaney/deepct, a version of the model weights converted to huggingface format by default
+indexer = deepct >> Toks2Text() >> pt.IterDictIndexer("./deepct_index_path")
+indexer.index(dataset.get_corpus_iter())
+```
+
+Options:
+ - `device`: device to run the model on, defualt cuda if available (or cpu if not)
+ - `batch_size`: batch size when encoding documents, defualt 64
+ - `scale`: score multiplier that moves the model outputs to a reasonable integer range, default 100
+ - `round`: round the scores to the nearest integer, default True
+
+## Usage (legacy API)
+
+The old API uses the `deepct` repository, which requires version 1 of tensorflow (not available everywhere, e.g., Colab).
+
 Given an existing DeepCT checkpoint and original Google BERT files, an DeepCT transformer can be created as follows:
 
 ```python
@@ -29,3 +46,4 @@ indexer.index(dataset.get_corpus_iter())
 
 ## Credits
  - Craig Macdonald, University of Glasgow
+ - Sean MacAvaney, University of Glasgow
