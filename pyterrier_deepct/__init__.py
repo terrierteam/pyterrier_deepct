@@ -1,7 +1,15 @@
-
+from collections import Counter
+import transformers
+import os
+import torch
+import numpy as np
+import pyterrier as pt
+if not pt.started():
+    pt.init()
 import pandas as pd
-from pyterrier.transformer import TransformerBase
-import deepct 
+from more_itertools import chunked
+import deepct
+
 def _subword_weight_to_word_weight(tokens, logits, smoothing="none", m=100, keep_all_terms=False):
     import numpy as np
     fulltokens = []
@@ -38,13 +46,17 @@ def dict_tf2text(tfdict):
             rtr += t + " " 
     return rtr
 
-class DeepCTTransformer(TransformerBase):
+class DeepCTTransformer(pt.Transformer):
     
     #bert_config="/users/tr.craigm/projects/pyterrier/DeepCT/bert-base-uncased/bert_config.json"
     #checkpoint="/users/tr.craigm/projects/pyterrier/DeepCT/outputs/marco/model.ckpt-65816"
     def __init__(self, bert_config, checkpoint, vocab_file="bert-base-uncased/vocab.txt", max_seq_length=128):
         import os
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+        try:
+            import deepct
+        except ImportError:
+            raise ImportError('deepct package not found\n - pip install git+https://github.com/cmacdonald/DeepCT.git@tf1#egg=DeepCT')
         from deepct import modeling
         from deepct import run_deepct
         model_fn = run_deepct.model_fn_builder(
@@ -84,8 +96,9 @@ class DeepCTTransformer(TransformerBase):
             from deepct.run_deepct import InputExample
             for row in docs.itertuples():
                 yield InputExample(row.docno, row.text, {})
-        features = deepct.run_deepct.convert_examples_to_features(gen(), None, self.max_seq_length, self.tokenizer)
-        input_fn = deepct.run_deepct.input_fn_builder(features, self.max_seq_length, False, False)
+        from deepct import run_deepct
+        features = run_deepct.convert_examples_to_features(gen(), None, self.max_seq_length, self.tokenizer)
+        input_fn = run_deepct.input_fn_builder(features, self.max_seq_length, False, False)
         result = self.estimator.predict(input_fn=input_fn)
         newdocs = []
         for (i, prediction) in enumerate(result):
@@ -101,3 +114,56 @@ class DeepCTTransformer(TransformerBase):
         rtr["docno"] = docs["docno"]
         rtr["text"] = newdocs
         return rtr
+
+def _subword_weight_to_dict(tokens, logits):
+    fulltokens = []
+    weights = []
+    for token, weight in zip(tokens, logits.tolist()):
+        if token.startswith('##'):
+            fulltokens[-1] += token[2:]
+        else:
+            fulltokens.append(token)
+            weights.append(weight)
+
+    selected_tokens = {}
+    for token, tf in zip(fulltokens, weights):
+        if token in ('[CLS]', '[SEP]', '[PAD]') or tf <= 0:
+            continue
+        selected_tokens[token] = max(tf, selected_tokens.get(token, 0))
+    return selected_tokens
+
+
+class DeepCT(pt.Transformer):
+    def __init__(self, model='macavaney/deepct', batch_size=64, scale=100, device=None, round=True):
+        if device is None:
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = torch.device(device)
+        self.model = transformers.AutoModelForTokenClassification.from_pretrained(model).eval().to(self.device)
+        self.tokenizer = transformers.AutoTokenizer.from_pretrained(model)
+        self.batch_size = batch_size
+        self.scale = scale
+        self.round = round
+
+    def transform(self, inp):
+        res = []
+        with torch.no_grad():
+            for texts in chunked(inp['text'], self.batch_size):
+                texts = list(texts)
+                toks = self.tokenizer(texts, return_tensors='pt', padding=True, truncation=True)
+                batch_tok_scores = self.model(**{k: v.to(self.device) for k, v in toks.items()})['logits']
+                batch_tok_scores = batch_tok_scores.squeeze(2).cpu().numpy()
+                batch_tok_scores = self.scale * batch_tok_scores
+                if self.round:
+                    batch_tok_scores = np.round(batch_tok_scores).astype(np.int32)
+                for i in range(batch_tok_scores.shape[0]):
+                    toks_txt = self.tokenizer.convert_ids_to_tokens(toks['input_ids'][i])
+                    toks_dict = _subword_weight_to_dict(toks_txt, batch_tok_scores[i])
+                    res.append(toks_dict)
+        return inp.assign(toks=res)
+
+
+class Toks2Text(pt.Transformer):
+    def transform(self, inp):
+        return inp.assign(text=inp['toks'].apply(self.toks2text))
+    def toks2text(self, toks):
+        return ' '.join(Counter(toks).elements())
