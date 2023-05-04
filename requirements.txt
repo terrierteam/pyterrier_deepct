@@ -1,3 +1,5 @@
+git+https://github.com/cmacdonald/DeepCT.git
 python-terrier
 pandas
+torch
 transformers>=4.0
